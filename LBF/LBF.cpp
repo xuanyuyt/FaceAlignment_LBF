@@ -36,7 +36,7 @@ int main(int argc, const char** argv)
 		trainDataName.push_back("afw");
 		trainDataName.push_back("helen");
 		trainDataName.push_back("lfpw");
-		//TrainModel(trainDataName);
+		TrainModel(argv[2], trainDataName);
 	}
 	else if (strcmp(argv[1], "TestModel") == 0) // ≤‚ ‘ ˝æ›ºØ
 	{
@@ -44,7 +44,7 @@ int main(int argc, const char** argv)
 		// you need to modify this section according to your training dataset
 		testDataName.push_back("IBUG");
 		//   testDataName.push_back("helen");
-		//double MRSE = TestModel(testDataName);
+		//double MRSE = TestModel(argv[2], testDataName);
 
 	}
 	else if (strcmp(argv[1], "Demo") == 0){
@@ -89,10 +89,10 @@ void InitializeGlobalParam()
 
 void PrintHelp(){
 	cout << "Useage:" << endl;
-	cout << "1. train your own model:    LBF.exe  TrainModel " << endl;
-	cout << "2. test model on dataset:   LBF.exe  TestModel" << endl;
-	cout << "3. test model via a camera: LBF.exe  Demo " << endl;
-	cout << "4. test model on a pic:     LBF.exe  Demo xx.jpg" << endl;
-	cout << "5. test model on pic set:   LBF.exe  Demo Img_Path.txt" << endl;
+	cout << "1. train your own model:    LBF.exe  TrainModel  ModelName" << endl;
+	cout << "2. test model on dataset:   LBF.exe  TestModel   ModelName" << endl;
+	cout << "3. test model via a camera: LBF.exe  Demo        ModelName" << endl;
+	cout << "4. test model on a pic:     LBF.exe  Demo xx.jpg  ModelName" << endl;
+	//cout << "5. test model on pic set:   LBF.exe  Demo Img_Path.txt  ModelName" << endl;
 	cout << endl;
 }
