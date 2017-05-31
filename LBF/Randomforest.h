@@ -6,15 +6,15 @@
 
 class Node {
 public:
-	int leaf_identity; // used only when it is leaf node, and is unique among the tree
-	Node* left_child_;
-	Node* right_child_;
-	int samples_;
-	bool is_leaf_;
-	int depth_; // recording current depth
-	double threshold_;
-	bool thre_changed_;
-	FeatureLocations feature_locations_;
+	int leaf_identity; // 叶子节点数量
+	Node* left_child_; // 左子节点
+	Node* right_child_; // 右子节点
+	int samples_; // 样本容量
+	bool is_leaf_; // 是否为叶子节点
+	int depth_; // 当前节点深度
+	double threshold_; // 分裂阈值
+	bool thre_changed_; // 
+	FeatureLocations feature_locations_; // 最优分裂像素差特征的相对索引
 	Node(Node* left, Node* right, double thres, bool leaf);
 	Node(Node* left, Node* right, double thres);
 	Node();
@@ -25,11 +25,11 @@ public:
 	int _stage;
 	int _local_features_num;
 	int _landmark_index;
-	int _tree_depth;
+	int _tree_depth; // 最大深度
 	int _trees_num_per_forest;
 	double _local_radius;
 	int _all_leaf_nodes;
-	std::vector<cv::Mat_<double> >* _regression_targets;
+	std::vector<cv::Mat_<double> >* _regression_targets; // 回归目标
 	std::vector<FeatureLocations> _local_position; // size = param_.local_features_num
 	std::vector<Node*> _trees;
 
@@ -42,8 +42,11 @@ public:
 		const std::vector<cv::Mat_<double> >& augmented_current_shapes,
 		const std::vector<cv::Mat_<double> >& rotations,
 		const std::vector<double>& scales);
-
-
+	// 训练一颗决策树
+	Node* BuildTree(std::set<int>& selected_indexes, cv::Mat_<int>& pixel_differences, std::vector<int>& images_indexes, int current_depth);
+	// 节点分裂
+	int FindSplitFeature(Node* node, std::set<int>& selected_indexes,
+		cv::Mat_<int>& pixel_differences, std::vector<int>& images_indexes, std::vector<int>& left_indexes, std::vector<int>& right_indexes);
 };
 
 

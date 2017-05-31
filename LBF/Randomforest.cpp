@@ -69,7 +69,7 @@ bool RandomForest::TrainForest(
 	
 	// get pixel differents features
 	cout << "get pixel differences" << endl;
-	cv::Mat_<int> pixel_differences(_local_features_num, augmented_images_index.size()); // 500×26900
+	cv::Mat_<int> pixel_differences(_local_features_num, augmented_images_index.size()); // 特征数×样本数
 	for (int i = 0; i < augmented_images_index.size(); i++)//对每个图片，得到500对像素差特征
 	{
 		cv::Mat_<double> rotation = rotations[i];
@@ -107,18 +107,162 @@ bool RandomForest::TrainForest(
 	for (int i = 0; i < _trees_num_per_forest; i++){//8棵树
 		int start_index = i*step;
 		int end_index = augmented_images_index.size() - (_trees_num_per_forest - i - 1)*step;
-		//cv::Mat_<int> data = pixel_differences(cv::Range(0, local_features_num_), cv::Range(start_index, end_index));
-		//cv::Mat_<int> sorted_data;
-		//cv::sortIdx(data, sorted_data, cv::SORT_EVERY_ROW + cv::SORT_ASCENDING);
-		std::set<int> selected_indexes;//存放阈值特征索引（0-landmark_num）
-		std::vector<int> images_indexes;
+		set<int> selected_indexes; // 存放阈值特征索引（0-landmark_num）
+		vector<int> images_indexes; // 决策树样本子集
 		for (int j = start_index; j < end_index; j++){
 			images_indexes.push_back(j);
 		}
-		//Node* root = BuildTree(selected_indexes, pixel_differences, images_indexes, 0);
-		//trees_.push_back(root);
+
+		// train a decision tree
+		Node* root = BuildTree(selected_indexes, pixel_differences, images_indexes, 0);
+		_trees.push_back(root);
 	}
 
-
 	return true;
+}
+
+// 训练一颗决策树
+Node* RandomForest::BuildTree(set<int>& selected_indexes, cv::Mat_<int>& pixel_differences,
+	vector<int>& images_indexes, int current_depth)
+{
+	if (images_indexes.size() > 0) // 判断样本集合是否为空
+	{
+		Node* node = new Node(); // 根节点
+		node->depth_ = current_depth;//当前节点深度
+		node->samples_ = images_indexes.size();//样本容量
+		vector<int> left_indexes, right_indexes; // 左右子节点样本索引
+
+		if (current_depth == _tree_depth) // 判断是否达到最大深度
+		{
+			node->is_leaf_ = true;
+			node->leaf_identity = _all_leaf_nodes;
+			return node;
+		}
+
+		// 节点分裂
+		int ret = FindSplitFeature(node, selected_indexes, pixel_differences, images_indexes, left_indexes, right_indexes);//成功分裂返回0，否则返回1
+		
+		// actually it won't enter the if block, when the random function is good enough
+		if (ret == 1){ // the current node contain all sample when reaches max variance reduction, it is leaf node
+			node->is_leaf_ = true;
+			node->leaf_identity = _all_leaf_nodes;
+			_all_leaf_nodes++;
+			return node;
+		}
+
+		node->left_child_ = BuildTree(selected_indexes, pixel_differences, left_indexes, current_depth + 1);
+		node->right_child_ = BuildTree(selected_indexes, pixel_differences, right_indexes, current_depth + 1);
+
+		return node;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+// 节点分裂
+int RandomForest::FindSplitFeature(Node* node, std::set<int>& selected_indexes,
+	cv::Mat_<int>& pixel_differences, std::vector<int>& images_indexes, std::vector<int>& left_indexes, std::vector<int>& right_indexes)
+{
+	//vector<int> val;
+	cv::RNG random_generator(cv::getTickCount());
+	int threshold;
+	double var = -1000000000000.0; // use -DBL_MAX will be better 
+	int feature_index = -1; // 最优分裂特征索引值(0 ~ _local_features_num)
+	vector<int> tmp_left_indexes, tmp_right_indexes;
+
+	// 从像素差特征中寻找最优分裂阈值: argmax (D - D_L - D_R)
+	// 具体操作中会从样本中抽取一个样本在某一序号特征中的像素差值作为分裂阈值，而不是遍历所有样本在所有特征序号处的像素差值
+	for (int j = 0; j < _local_features_num; j++)
+	{
+		if (selected_indexes.find(j) == selected_indexes.end()) //回去看下set ？？？
+		{
+			tmp_left_indexes.clear();
+			tmp_right_indexes.clear();
+			double var_lc = 0.0, var_rc = 0.0, var_red = 0.0;//节点数目
+			double Ex_2_lc = 0.0, Ex_lc = 0.0, Ey_2_lc = 0.0, Ey_lc = 0.0;//均值的平方与均值
+			double Ex_2_rc = 0.0, Ex_rc = 0.0, Ey_2_rc = 0.0, Ey_rc = 0.0;
+			// random generate threshold
+			std::vector<int> data; // 某一对点映射到样本中的像素差特征
+			data.reserve(images_indexes.size());
+			for (int i = 0; i < images_indexes.size(); i++){
+				data.push_back(pixel_differences(j, images_indexes[i]));
+			}
+			std::sort(data.begin(), data.end()); // 按大小排序？？？
+
+			int tmp_index = floor((int)(images_indexes.size()*(0.5 + 0.9*(random_generator.uniform(0.0, 1.0) - 0.5)))); //？？？
+			int tmp_threshold = data[tmp_index];
+			for (int i = 0; i < images_indexes.size(); i++) // 尝试划分
+			{
+				int index = images_indexes[i];
+				if (pixel_differences(j, index) < tmp_threshold) //如果像素差小于阈值
+				{
+					tmp_left_indexes.push_back(index); // 划分到左子节点
+					double value = _regression_targets->at(index)(_landmark_index, 0); // delta x
+					Ex_2_lc += pow(value, 2);
+					Ex_lc += value;
+					value = _regression_targets->at(index)(_landmark_index, 1); // delta y
+					Ey_2_lc += pow(value, 2);
+					Ey_lc += value;
+				}
+				else // 划分到右子节点
+				{
+					tmp_right_indexes.push_back(index);
+					double value = _regression_targets->at(index)(_landmark_index, 0);
+					Ex_2_rc += pow(value, 2);
+					Ex_rc += value;
+					value = _regression_targets->at(index)(_landmark_index, 1);
+					Ey_2_rc += pow(value, 2);
+					Ey_rc += value;
+				}
+			}
+
+			// 计算方差
+			if (tmp_left_indexes.size() == 0) // 如果左子节点为空
+			{
+				var_lc = 0.0;
+			}
+			else
+			{
+				var_lc = Ex_2_lc / tmp_left_indexes.size() - pow(Ex_lc / tmp_left_indexes.size(), 2)
+					+ Ey_2_lc / tmp_left_indexes.size() - pow(Ey_lc / tmp_left_indexes.size(), 2);
+			}
+
+			if (tmp_right_indexes.size() == 0) // 如果右子节点为空
+			{
+				var_rc = 0.0;
+			}
+			else
+			{
+				var_rc = Ex_2_rc / tmp_right_indexes.size() - pow(Ex_rc / tmp_right_indexes.size(), 2)
+					+ Ey_2_rc / tmp_right_indexes.size() - pow(Ey_rc / tmp_right_indexes.size(), 2);
+			}
+			// 计算方差降低情况
+			var_red = -var_lc*tmp_left_indexes.size() - var_rc*tmp_right_indexes.size();
+
+			if (var_red > var)
+			{
+				var = var_red;
+				threshold = tmp_threshold;
+				feature_index = j;
+				left_indexes = tmp_left_indexes;
+				right_indexes = tmp_right_indexes;
+			}
+		}
+	}
+
+	if (feature_index != -1) // actually feature_index will never be -1 
+	{
+		if (left_indexes.size() == 0 || right_indexes.size() == 0){
+			node->is_leaf_ = true; // the node can contain all the samples
+			return 1; // 到达叶子节点
+		}
+		node->threshold_ = threshold; // f分裂阈值
+		//node->thre_changed_ = true;
+		node->feature_locations_ = _local_position[feature_index]; // 相对索引值
+		selected_indexes.insert(feature_index);
+		return 0;
+	}
+	return -1;
 }
