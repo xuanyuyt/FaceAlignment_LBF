@@ -86,3 +86,41 @@ BoundingBox CalculateBoundingBox(Mat_<double>& shape){
 	bbx.centroid_y = bbx.start_y + bbx.height / 2.0;
 	return bbx;
 }
+
+// get the mean shape, [-1, 1]x[-1, 1]
+
+Mat_<double> GetMeanShape(const vector<Mat_<double> >& shapes,
+	const vector<BoundingBox>& bounding_box)
+{
+	Mat_<double> result = Mat::zeros(shapes[0].rows, 2, CV_64FC1);
+	for (int i = 0; i < shapes.size(); i++){
+		result = result + ProjectShape(shapes[i], bounding_box[i]);
+	}
+	result = 1.0 / shapes.size() * result;
+	/*
+	for(int i = 0; i<29;i++){
+	cout << result(i,0)<< "  " <<result(i,1) << endl;
+	}
+	*/
+	return result;
+}
+
+// project the global shape coordinates to [-1, 1]x[-1, 1]
+cv::Mat_<double> ProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox){
+	cv::Mat_<double> results(shape.rows, 2);
+	for (int i = 0; i < shape.rows; i++){
+		results(i, 0) = (shape(i, 0) - bbox.centroid_x) / (bbox.width / 2.0);
+		results(i, 1) = (shape(i, 1) - bbox.centroid_y) / (bbox.height / 2.0);
+	}
+	return results;
+}
+
+// reproject the shape to global coordinates
+cv::Mat_<double> ReProjection(const cv::Mat_<double>& shape, const BoundingBox& bbox){
+	cv::Mat_<double> results(shape.rows, 2);
+	for (int i = 0; i < shape.rows; i++){
+		results(i, 0) = shape(i, 0)*bbox.width / 2.0 + bbox.centroid_x;
+		results(i, 1) = shape(i, 1)*bbox.height / 2.0 + bbox.centroid_y;
+	}
+	return results;
+}

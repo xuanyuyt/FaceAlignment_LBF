@@ -22,6 +22,7 @@ public:
 	cv::Mat_<double> _mean_shape; // 平均形状
 };
 
+// extern 声明，整个工程共享
 extern Parameters global_params;
 extern std::string modelPath;
 extern std::string dataPath;
@@ -59,5 +60,13 @@ cv::Mat_<double> LoadGroundTruthShape(std::string& filename);
 
 // 将 ground truth shapes 的最小包围矩形作为人脸框
 BoundingBox CalculateBoundingBox(cv::Mat_<double>& shape);
+
+// 得到 mean shape, [-1, 1]x[-1, 1]
+cv::Mat_<double> GetMeanShape(const std::vector<cv::Mat_<double> >& all_shapes,
+	const std::vector<BoundingBox>& all_bboxes);
+// project the global shape coordinates to [-1, 1]x[-1, 1]
+cv::Mat_<double> ProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox);
+// reproject the shape to global coordinates
+cv::Mat_<double> ReProjection(const cv::Mat_<double>& shape, const BoundingBox& bbox);
 
 #endif // !LBF_H

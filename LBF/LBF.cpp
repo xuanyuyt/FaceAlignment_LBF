@@ -33,9 +33,9 @@ int main(int argc, const char** argv)
 	{
 		vector<string> trainDataName;
 		// you need to modify this section according to your training dataset
-		trainDataName.push_back("afw");
-		trainDataName.push_back("helen");
-		trainDataName.push_back("lfpw");
+		//trainDataName.push_back("AFW");
+		//trainDataName.push_back("HELEN");
+		trainDataName.push_back("LFPW");
 		TrainModel(argv[2], trainDataName);
 	}
 	else if (strcmp(argv[1], "TestModel") == 0) // ≤‚ ‘ ˝æ›ºØ
