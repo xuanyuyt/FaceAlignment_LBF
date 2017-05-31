@@ -53,7 +53,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -80,6 +80,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="LBF.cpp" />
+    <ClCompile Include="liblinear\daxpy.c" />
+    <ClCompile Include="liblinear\ddot.c" />
+    <ClCompile Include="liblinear\dnrm2.c" />
+    <ClCompile Include="liblinear\dscal.c" />
+    <ClCompile Include="liblinear\linear.cpp" />
+    <ClCompile Include="liblinear\tron.cpp" />
     <ClCompile Include="Randomforest.cpp" />
     <ClCompile Include="Regressor.cpp" />
     <ClCompile Include="TrainModel.cpp" />
@@ -87,6 +93,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LBF.h" />
+    <ClInclude Include="liblinear\blas.h" />
+    <ClInclude Include="liblinear\blasp.h" />
+    <ClInclude Include="liblinear\linear.h" />
+    <ClInclude Include="liblinear\tron.h" />
     <ClInclude Include="Randomforest.h" />
     <ClInclude Include="Regressor.h" />
   </ItemGroup>

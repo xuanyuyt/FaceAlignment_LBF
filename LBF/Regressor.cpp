@@ -92,6 +92,7 @@ vector<Mat_<double> > Regressor::Train(const vector<Mat_<uchar> >& images,
 		scales[i] = scale;
 	}
 
+	/* 训练随机森林 */
 	std::cout << "train forest of stage:" << _stage + 1 << std::endl;
 	_rd_forests.resize(params._landmarks_num);
 	for (int i = 0; i < params._landmarks_num; ++i) //对每个特征点
@@ -102,9 +103,14 @@ vector<Mat_<double> > Regressor::Train(const vector<Mat_<uchar> >& images,
 			images, augmented_images_index, augmented_bboxes, augmented_current_shapes,
 			rotations, scales);
 	}
-
+	/* 特征编码 */
 	std::cout << "Get Global Binary Features" << std::endl;
+	struct feature_node **global_binary_features;
+	global_binary_features = new struct feature_node*[augmented_current_shapes.size()];
 
+	for (int i = 0; i < augmented_current_shapes.size(); ++i){
+		global_binary_features[i] = new feature_node[params._trees_num*params._landmarks_num + 1];//为什么+1
+	}
 
 	std::cout << "Global Regression of stage " << _stage << std::endl;
 
