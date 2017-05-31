@@ -2,6 +2,23 @@
 #define RANDOMFOREST_H
 
 #include "LBF.h"
+#include <set>
+
+class Node {
+public:
+	int leaf_identity; // used only when it is leaf node, and is unique among the tree
+	Node* left_child_;
+	Node* right_child_;
+	int samples_;
+	bool is_leaf_;
+	int depth_; // recording current depth
+	double threshold_;
+	bool thre_changed_;
+	FeatureLocations feature_locations_;
+	Node(Node* left, Node* right, double thres, bool leaf);
+	Node(Node* left, Node* right, double thres);
+	Node();
+};
 
 class RandomForest {
 public:
@@ -11,8 +28,10 @@ public:
 	int _tree_depth;
 	int _trees_num_per_forest;
 	double _local_radius;
+	int _all_leaf_nodes;
 	std::vector<cv::Mat_<double> >* _regression_targets;
 	std::vector<FeatureLocations> _local_position; // size = param_.local_features_num
+	std::vector<Node*> _trees;
 
 
 	RandomForest(){};
@@ -26,5 +45,6 @@ public:
 
 
 };
+
 
 #endif
