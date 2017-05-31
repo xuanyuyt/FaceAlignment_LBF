@@ -1,3 +1,39 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="LBF.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Randomforest.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Regressor.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TrainModel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LBF.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Regressor.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Randomforest.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{b3fca9ca-10e8-4115-8bb9-7c402493ecb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4af592d9-6059-4c93-91c3-b1ec33efef41}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
 </Project>
