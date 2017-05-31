@@ -67,6 +67,6 @@ cv::Mat_<double> GetMeanShape(const std::vector<cv::Mat_<double> >& all_shapes,
 // project the global shape coordinates to [-1, 1]x[-1, 1]
 cv::Mat_<double> ProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox);
 // reproject the shape to global coordinates
-cv::Mat_<double> ReProjection(const cv::Mat_<double>& shape, const BoundingBox& bbox);
+cv::Mat_<double> ReProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox);
 
 #endif // !LBF_H

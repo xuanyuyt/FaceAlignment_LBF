@@ -116,7 +116,7 @@ cv::Mat_<double> ProjectShape(const cv::Mat_<double>& shape, const BoundingBox& 
 }
 
 // reproject the shape to global coordinates
-cv::Mat_<double> ReProjection(const cv::Mat_<double>& shape, const BoundingBox& bbox){
+cv::Mat_<double> ReProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox){
 	cv::Mat_<double> results(shape.rows, 2);
 	for (int i = 0; i < shape.rows; i++){
 		results(i, 0) = shape(i, 0)*bbox.width / 2.0 + bbox.centroid_x;
