@@ -2,22 +2,28 @@
 #define REGRESSOR_H
 
 #include "LBF.h"
+#include "Randomforest.h"
 
 class Regressor {
 public:
 	int _stage;
-	Parameters _params;
 
-	/*std::vector<RandomForest> rd_forests_;
-	std::vector<struct model*> linear_model_x_;
-	std::vector<struct model*> linear_model_y_;
+	std::vector<RandomForest> _rd_forests;
+	//std::vector<struct model*> linear_model_x_;
+	//std::vector<struct model*> linear_model_y_;
 
-	struct feature_node* tmp_binary_features;*/
-	cv::Mat_<uchar> tmp_image;
-	cv::Mat_<double> tmp_current_shape;
-	BoundingBox tmp_bbox;
-	cv::Mat_<double> tmp_rotation;
-	double tmp_scale;
+	//struct feature_node* tmp_binary_features;
+
+	Regressor(){};
+	~Regressor(){};
+	Regressor(const Regressor&){};
+	std::vector<cv::Mat_<double> > Train(const std::vector<cv::Mat_<uchar> >& images,
+		const std::vector<int>& augmented_images_index,
+		const std::vector<cv::Mat_<double> >& augmented_ground_truth_shapes,
+		const std::vector<BoundingBox>& augmented_bboxes,
+		const std::vector<cv::Mat_<double> >& augmented_current_shapes,
+		const Parameters& params,
+		const int stage);
 
 };
 

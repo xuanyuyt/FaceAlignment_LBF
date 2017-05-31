@@ -6,6 +6,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/core.hpp"
+#include <ctime>
 
 class Parameters{
 public:
@@ -45,6 +46,22 @@ public:
 	};
 };
 
+class FeatureLocations
+{
+public:
+	cv::Point2d start;
+	cv::Point2d end;
+	FeatureLocations(cv::Point2d a, cv::Point2d b){
+		start = a;
+		end = b;
+	}
+	FeatureLocations(){
+		start = cv::Point2d(0.0, 0.0);
+		end = cv::Point2d(0.0, 0.0);
+	};
+};
+
+
 // ÑµÁ·Êý¾Ý¼¯
 void TrainModel(const char* ModelName, std::vector<std::string> trainDataName);
 
@@ -68,5 +85,10 @@ cv::Mat_<double> GetMeanShape(const std::vector<cv::Mat_<double> >& all_shapes,
 cv::Mat_<double> ProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox);
 // reproject the shape to global coordinates
 cv::Mat_<double> ReProjectShape(const cv::Mat_<double>& shape, const BoundingBox& bbox);
+// get the rotation and scale parameters by transferring shape_from to shape_to, shape_to = M*shape_from
+void SimilarityTransform(const cv::Mat_<double>& shape_to,
+	const cv::Mat_<double>& shape_from,
+	cv::Mat_<double>& rotation, double& scale);
+
 
 #endif // !LBF_H
