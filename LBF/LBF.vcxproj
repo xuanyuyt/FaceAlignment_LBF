@@ -79,6 +79,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FaceDetection.cpp" />
     <ClCompile Include="LBF.cpp" />
     <ClCompile Include="liblinear\daxpy.c" />
     <ClCompile Include="liblinear\ddot.c" />

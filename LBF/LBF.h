@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/core.hpp"
@@ -66,9 +67,9 @@ public:
 
 
 // 训练数据集
-void TrainModel(const char* ModelName, std::vector<std::string> trainDataName);
+void TrainModel(std::vector<std::string> trainDataName);
 // 测试数据集
-void TestModel(const char* ModelName, std::vector<std::string> testDataName);
+void TestModel(std::vector<std::string> testDataName);
 
 // 加载常规数据集
 void LoadData(std::string file_names,
@@ -98,5 +99,8 @@ void SimilarityTransform(const cv::Mat_<double>& shape_to,
 
 double CalculateError68(cv::Mat_<double>& ground_truth_shape, cv::Mat_<double>& predicted_shape);
 void DrawPredictedImage(cv::Mat &image, cv::Mat_<double>& shape);
+
+int FaceDetectionAndAlignment(const char* name);
+
 
 #endif // !LBF_H

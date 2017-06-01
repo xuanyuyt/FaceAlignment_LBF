@@ -4,7 +4,7 @@
 using namespace std;
 using namespace cv;
 
-void TrainModel(const char* ModelName, vector<string> trainDataName)
+void TrainModel(vector<string> trainDataName)
 {
 	vector<Mat> images_color;
 	vector<Mat_<uchar>> images_gray;
