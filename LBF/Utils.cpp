@@ -209,3 +209,137 @@ double CalculateError68(Mat_<double>& ground_truth_shape, Mat_<double>& predicte
 	}
 	return sum / (ground_truth_shape.rows*interocular_distance);
 }
+
+bool IsShapeInRect(Mat_<double>& shape, Rect& rect, double scale){
+	double sum1 = 0;
+	double sum2 = 0;
+	double max_x = 0, min_x = 10000, max_y = 0, min_y = 10000;
+	for (int i = 0; i < shape.rows; i++){
+		if (shape(i, 0)>max_x) max_x = shape(i, 0);
+		if (shape(i, 0)<min_x) min_x = shape(i, 0);
+		if (shape(i, 1)>max_y) max_y = shape(i, 1);
+		if (shape(i, 1)<min_y) min_y = shape(i, 1);
+
+		sum1 += shape(i, 0);
+		sum2 += shape(i, 1);
+	}
+	if ((max_x - min_x)>rect.width*1.5){
+		return false;
+	}
+	if ((max_y - min_y)>rect.height*1.5){
+		return false;
+	}
+	if (abs(sum1 / shape.rows - (rect.x + rect.width / 2.0)*scale) > rect.width*scale / 2.0){
+		return false;
+	}
+	if (abs(sum2 / shape.rows - (rect.y + rect.height / 2.0)*scale) > rect.height*scale / 2.0){
+		return false;
+	}
+	return true;
+}
+
+void adjustImage(Mat_<uchar>& img,
+	Mat_<double>& ground_truth_shape,
+	BoundingBox& bounding_box){
+	double left_x = max(1.0, bounding_box.centroid_x - bounding_box.width * 2 / 3);
+	double top_y = max(1.0, bounding_box.centroid_y - bounding_box.height * 2 / 3);
+	double right_x = min(img.cols - 1.0, bounding_box.centroid_x + bounding_box.width);
+	double bottom_y = min(img.rows - 1.0, bounding_box.centroid_y + bounding_box.height);
+	img = img.rowRange((int)top_y, (int)bottom_y).colRange((int)left_x, (int)right_x).clone();
+
+	bounding_box.start_x = bounding_box.start_x - left_x;
+	bounding_box.start_y = bounding_box.start_y - top_y;
+	bounding_box.centroid_x = bounding_box.start_x + bounding_box.width / 2.0;
+	bounding_box.centroid_y = bounding_box.start_y + bounding_box.height / 2.0;
+
+	for (int i = 0; i<ground_truth_shape.rows; i++){
+		ground_truth_shape(i, 0) = ground_truth_shape(i, 0) - left_x;
+		ground_truth_shape(i, 1) = ground_truth_shape(i, 1) - top_y;
+	}
+}
+
+
+void LoadOpencvBbxData(string filepath,
+	vector<Mat> & images_color,
+	vector<Mat_<uchar> >& images,
+	vector<Mat_<double> >& ground_truth_shapes,
+	vector<BoundingBox> & bounding_boxs)
+{
+	ifstream fin;
+	fin.open(filepath);
+
+	CascadeClassifier cascade;
+	double scale = 1.3;
+	extern string cascadeName;
+	vector<Rect> faces;
+
+	// --Detection
+	cascade.load(cascadeName);
+	string name;
+	while (getline(fin, name)){
+		name.erase(0, name.find_first_not_of(" \t"));
+		name.erase(name.find_last_not_of(" \t") + 1);
+		cout << "file:" << name << endl;
+
+		// Read Image
+		const cv::Mat image_color = cv::imread(name, 1);
+		if (image_color.data == NULL){
+			std::cerr << "could not load " << name << std::endl;
+			continue;
+		}
+		images_color.push_back(image_color);
+		Mat_<uchar> image = imread(name, 0);
+		images.push_back(image);
+
+		// Read ground truth shapes
+		name.replace(name.find_last_of("."), 4, ".pts");
+		Mat_<double> ground_truth_shape = LoadGroundTruthShape(name);
+
+		// Read Opencv Detection Bbx
+		Mat smallImg(cvRound(image.rows / scale), cvRound(image.cols / scale), CV_8UC1);
+		resize(image, smallImg, smallImg.size(), 0, 0, INTER_LINEAR);
+		equalizeHist(smallImg, smallImg);
+
+		// --Detection
+		cascade.detectMultiScale(smallImg, faces,
+			1.1, 2, 0
+			//|CV_HAAR_FIND_BIGGEST_OBJECT
+			//|CV_HAAR_DO_ROUGH_SEARCH
+			| CV_HAAR_SCALE_IMAGE
+			,
+			Size(30, 30));
+		for (vector<Rect>::const_iterator r = faces.begin(); r != faces.end(); r++){
+			Rect rect = *r;
+			if (IsShapeInRect(ground_truth_shape, rect, scale)){
+				Point center;
+				BoundingBox boundingbox;
+
+				boundingbox.start_x = r->x*scale;
+				boundingbox.start_y = r->y*scale;
+				boundingbox.width = (r->width - 1)*scale;
+				boundingbox.height = (r->height - 1)*scale;
+				boundingbox.centroid_x = boundingbox.start_x + boundingbox.width / 2.0;
+				boundingbox.centroid_y = boundingbox.start_y + boundingbox.height / 2.0;
+
+
+				adjustImage(image, ground_truth_shape, boundingbox);
+				images.push_back(image);
+				ground_truth_shapes.push_back(ground_truth_shape);
+				bounding_boxs.push_back(boundingbox);
+				// add train data
+
+
+				rectangle(image, cvPoint(boundingbox.start_x, boundingbox.start_y),
+					cvPoint(boundingbox.start_x + boundingbox.width, boundingbox.start_y + boundingbox.height), Scalar(0, 255, 0), 1, 8, 0);
+				for (int i = 0; i<ground_truth_shape.rows; i++){
+					circle(image, Point2d(ground_truth_shape(i, 0), ground_truth_shape(i, 1)), 1, Scalar(255, 0, 0), -1, 8, 0);
+				}
+				imshow("BBX", image);
+				waitKey(0);
+				break;
+			}
+		}
+	}
+	fin.close();
+}
+

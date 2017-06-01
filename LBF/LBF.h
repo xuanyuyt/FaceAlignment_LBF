@@ -102,5 +102,15 @@ void DrawPredictedImage(cv::Mat &image, cv::Mat_<double>& shape);
 
 int FaceDetectionAndAlignment(const char* name);
 
+void LoadOpencvBbxData(std::string filepath,
+	std::vector<cv::Mat > & images_color,
+	std::vector<cv::Mat_<uchar> >& images,
+	std::vector<cv::Mat_<double> >& ground_truth_shapes,
+	std::vector<BoundingBox> & bounding_boxs);
+
+void adjustImage(cv::Mat_<uchar>& img,
+	cv::Mat_<double>& ground_truth_shape,
+	BoundingBox& bounding_box);
+
 
 #endif // !LBF_H
