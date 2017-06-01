@@ -12,9 +12,9 @@
 class Parameters{
 public:
 	double _bagging_overlap; // 随机森林Bagging参数
-	int _trees_num; // 随机森林树的数目
+	int _trees_num_per_forest; // 随机森林树的数目
 	int _tree_depth; // 每颗树的最大深度
-	int _landmarks_num; // landmarks 点数
+	int _landmarks_num_per_face; // landmarks 点数
 	int _initial_num; // 多初始形状
 
 	int _regressor_stages; // 回归级数

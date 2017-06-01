@@ -68,9 +68,9 @@ int main(int argc, const char** argv)
 void InitializeGlobalParam()
 {
 	global_params._bagging_overlap = 0.4;
-	global_params._trees_num = 8;
+	global_params._trees_num_per_forest = 8;
 	global_params._tree_depth = 5;
-	global_params._landmarks_num = 68;
+	global_params._landmarks_num_per_face = 68;
 	global_params._initial_num = 10;
 
 	global_params._regressor_stages = 10;

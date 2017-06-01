@@ -46,7 +46,7 @@ void LoadData(string filepath,
 
 // ∂¡»° ground truth shapes
 Mat_<double> LoadGroundTruthShape(string& filename){
-	Mat_<double> shape(global_params._landmarks_num, 2);
+	Mat_<double> shape(global_params._landmarks_num_per_face, 2);
 	ifstream fin;
 	string temp;
 
@@ -54,7 +54,7 @@ Mat_<double> LoadGroundTruthShape(string& filename){
 	getline(fin, temp);
 	getline(fin, temp);
 	getline(fin, temp);
-	for (int i = 0; i<global_params._landmarks_num; i++){
+	for (int i = 0; i<global_params._landmarks_num_per_face; i++){
 		fin >> shape(i, 0) >> shape(i, 1);
 	}
 	fin.close();

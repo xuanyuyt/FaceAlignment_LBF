@@ -46,6 +46,11 @@ public:
 	// ╫з╣Ц╥жая
 	int FindSplitFeature(Node* node, std::set<int>& selected_indexes,
 		cv::Mat_<int>& pixel_differences, std::vector<int>& images_indexes, std::vector<int>& left_indexes, std::vector<int>& right_indexes);
+	void SaveRandomForest(std::ofstream& fout);
+	void LoadRandomForest(std::ifstream& fin);
+
+	void WriteTree(Node* p, std::ofstream& fout);
+	Node* ReadTree(std::ifstream& fin);
 };
 
 

@@ -93,8 +93,8 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 
 	/* 训练随机森林 */
 	std::cout << "train forest of stage:" << _stage + 1 << std::endl;
-	_rd_forests.resize(params._landmarks_num);
-	for (int i = 0; i < params._landmarks_num; ++i) //对每个特征点
+	_rd_forests.resize(params._landmarks_num_per_face);
+	for (int i = 0; i < params._landmarks_num_per_face; ++i) //对每个特征点
 	{
 		std::cout << "landmark: " << i << std::endl;
 		_rd_forests[i] = RandomForest(params, i, _stage, regression_targets);//初始化参数
@@ -109,10 +109,10 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 
 	for (int i = 0; i < augmented_current_shapes.size(); ++i)
 	{
-		global_binary_features[i] = new feature_node[params._trees_num * params._landmarks_num + 1];//+1 是标识符
+		global_binary_features[i] = new feature_node[params._trees_num_per_forest * params._landmarks_num_per_face + 1];//+1 是标识符
 	}
 	int num_feature = 0;//随机森林所有叶子节点数
-	for (int i = 0; i < params._landmarks_num; ++i){
+	for (int i = 0; i < params._landmarks_num_per_face; ++i){
 		num_feature += _rd_forests[i]._all_leaf_nodes;// landmarks×2^depth
 	}
 
@@ -126,9 +126,9 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 		const BoundingBox& bbox = augmented_bboxes[i];
 		const cv::Mat_<double>& current_shape = augmented_current_shapes[i];
 
-		for (int j = 0; j < params._landmarks_num; ++j) // 每个特征点
+		for (int j = 0; j < params._landmarks_num_per_face; ++j) // 每个特征点
 		{
-			for (int k = 0; k < params._trees_num; ++k) // 每棵树
+			for (int k = 0; k < params._trees_num_per_forest; ++k) // 每棵树
 			{
 				Node* node = _rd_forests[j]._trees[k];
 				while (!node->_is_leaf) // 非叶节点
@@ -172,8 +172,8 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 		if (i % 500 == 0 && i > 0){
 			cout << "extracted " << i << " images" << endl;
 		}
-		global_binary_features[i][params._trees_num*params._landmarks_num].index = -1; //标记编码结束
-		global_binary_features[i][params._trees_num*params._landmarks_num].value = -1.0;//标记编码结束
+		global_binary_features[i][params._trees_num_per_forest*params._landmarks_num_per_face].index = -1; //标记编码结束
+		global_binary_features[i][params._trees_num_per_forest*params._landmarks_num_per_face].value = -1.0;//标记编码结束
 	}
 
 	/* 训练回归器 */
@@ -190,10 +190,10 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 	//regression_params->eps = 0.0001;
 
 	std::cout << "Global Regression of stage " << _stage << std::endl;
-	_linear_model_x.resize(params._landmarks_num);
-	_linear_model_y.resize(params._landmarks_num);
+	_linear_model_x.resize(params._landmarks_num_per_face);
+	_linear_model_y.resize(params._landmarks_num_per_face);
 	double* targets = new double[augmented_current_shapes.size()];
-	for (int i = 0; i < params._landmarks_num; ++i) //回归每个landmark
+	for (int i = 0; i < params._landmarks_num_per_face; ++i) //回归每个landmark
 	{
 		std::cout << "regress landmark " << i << std::endl;
 		for (int j = 0; j< augmented_current_shapes.size(); j++){
@@ -216,8 +216,8 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 	std::vector<cv::Mat_<double> > predict_regression_targets;
 	predict_regression_targets.resize(augmented_current_shapes.size());
 	for (int i = 0; i < augmented_current_shapes.size(); i++){
-		cv::Mat_<double> atargets_predict(params._landmarks_num, 2, 0.0);
-		for (int j = 0; j < params._landmarks_num; j++){
+		cv::Mat_<double> atargets_predict(params._landmarks_num_per_face, 2, 0.0);
+		for (int j = 0; j < params._landmarks_num_per_face; j++){
 			atargets_predict(j, 0) = predict(_linear_model_x[j], global_binary_features[i]);
 			atargets_predict(j, 1) = predict(_linear_model_y[j], global_binary_features[i]);
 		}
@@ -236,4 +236,109 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 	delete[] global_binary_features;
 
 	return predict_regression_targets;
+}
+
+void CascadeRegressor::SaveCascadeRegressor(std::string ModelName){
+	std::ofstream fout;
+
+	fout.open((ModelName + "_params").c_str(), std::fstream::out);
+	fout << _params._local_features_num << " "
+		<< _params._landmarks_num_per_face << " "
+		<< _params._regressor_stages << " "
+		<< _params._tree_depth << " "
+		<< _params._trees_num_per_forest << " "
+		<< _params._initial_num << std::endl;
+	for (int i = 0; i < _params._regressor_stages; i++){
+		fout << _params._local_radius[i] << std::endl;
+	}
+	for (int i = 0; i < _params._landmarks_num_per_face; i++){
+		fout << _params._mean_shape(i, 0) << " " << _params._mean_shape(i, 1) << std::endl;
+	}
+
+	fout.close();
+
+	fout.open(ModelName + "_regressors", ios::binary);
+
+	for (int i = 0; i < _params._regressor_stages; i++){
+		_regressors[i].SaveRegressor(fout);
+		fout << _Models[i].size() << endl;
+		for (int j = 0; j<_Models[i].size(); j++){
+			save_model_bin(fout, _Models[i][j]);
+		}
+		
+	}
+	fout.close();
+}
+
+void CascadeRegressor::LoadCascadeRegressor(std::string ModelName){
+	std::ifstream fin;
+	fin.open((ModelName + "_params").c_str(), std::fstream::in);
+	_params = Parameters();
+	fin >> _params._local_features_num
+		>> _params._landmarks_num_per_face
+		>> _params._regressor_stages
+		>> _params._tree_depth
+		>> _params._trees_num_per_forest
+		>> _params._initial_num;
+
+	std::vector<double> local_radius_by_stage;
+	local_radius_by_stage.resize(_params._regressor_stages);
+	for (int i = 0; i < _params._regressor_stages; i++){
+		fin >> local_radius_by_stage[i];
+	}
+	_params._local_radius = local_radius_by_stage;
+
+	cv::Mat_<double> mean_shape(_params._landmarks_num_per_face, 2, 0.0);
+	for (int i = 0; i < _params._landmarks_num_per_face; i++){
+		fin >> mean_shape(i, 0) >> mean_shape(i, 1);
+	}
+	_params._mean_shape = mean_shape;
+
+	fin.close();
+	fin.open((ModelName + "_regressors").c_str(), std::fstream::in);
+	_regressors.resize(_params._regressor_stages);
+	for (int i = 0; i < _params._regressor_stages; i++){
+		_regressors[i]._params = _params;
+		_regressors[i].LoadRegressor(fin);
+		_regressors[i].ConstructLeafCount();
+		int num = 0;
+		fin >> num;
+		_Models[i].resize(num);
+		for (int j = 0; j<num; j++){
+			_Models[i][j] = load_model_bin(fin);
+		}
+
+	}
+}
+
+void Regressor::SaveRegressor(std::ofstream& fout)
+{
+	fout << _stage << " "
+		<< _rd_forests.size() << " "
+		<< _linear_model_x.size() << std::endl;
+
+	for (int i = 0; i < _rd_forests.size(); i++){
+		_rd_forests[i].SaveRandomForest(fout);
+	}
+
+}
+
+void Regressor::LoadRegressor(std::ifstream& fin)
+{
+	int rd_size, linear_size;
+	fin >> _stage >> rd_size >> linear_size;
+	_rd_forests.resize(rd_size);
+	for (int i = 0; i < rd_size; i++){
+		_rd_forests[i].LoadRandomForest(fin);
+	}
+
+}
+
+
+void Regressor::ConstructLeafCount(){
+	int index = 1;
+	for (int i = 0; i < _params._landmarks_num_per_face; ++i){
+		leaf_index_count[i] = index;
+		index += _rd_forests[i]._all_leaf_nodes;
+	}
 }

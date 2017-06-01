@@ -29,7 +29,7 @@ RandomForest::RandomForest(const Parameters& param, int landmark_index, int stag
 	_local_features_num = param._local_features_num;
 	_landmark_index = landmark_index;
 	_tree_depth = param._tree_depth;
-	_trees_num_per_forest = param._trees_num;
+	_trees_num_per_forest = param._trees_num_per_forest;
 	_local_radius = param._local_radius[stage];
 	//mean_shape_ = param.mean_shape_;
 	_regression_targets = &regression_targets; // get the address pointer, not reference
@@ -266,4 +266,81 @@ int RandomForest::FindSplitFeature(Node* node, std::set<int>& selected_indexes,
 		return 0;
 	}
 	return -1;
+}
+
+
+void RandomForest::SaveRandomForest(std::ofstream& fout){
+	fout << _stage << " "
+		<< _local_features_num << " "
+		<< _landmark_index << " "
+		<< _tree_depth << " "
+		<< _trees_num_per_forest << " "
+		<< _local_radius << " "
+		<< _all_leaf_nodes << " "
+		<< _trees.size() << std::endl;
+	for (int i = 0; i < _trees.size(); i++){
+		Node* root = _trees[i];
+		WriteTree(root, fout);
+	}
+}
+
+
+void RandomForest::WriteTree(Node* p, std::ofstream& fout){
+	if (!p){
+		fout << "#" << std::endl;
+	}
+	else{
+		fout << "Y" << " "
+			<< p->_threshold << " "
+			<< p->_is_leaf << " "
+			<< p->_leaf_identity << " "
+			<< p->_depth << " "
+			<< p->_feature_locations.start.x << " "
+			<< p->_feature_locations.start.y << " "
+			<< p->_feature_locations.end.x << " "
+			<< p->_feature_locations.end.y << std::endl;
+		WriteTree(p->_left_child, fout);
+		WriteTree(p->_right_child, fout);
+	}
+}
+
+void RandomForest::LoadRandomForest(std::ifstream& fin){
+
+	int tree_size;
+	fin >> _stage
+		>> _local_features_num
+		>> _landmark_index
+		>> _tree_depth
+		>> _trees_num_per_forest
+		>> _local_radius
+		>> _all_leaf_nodes
+		>> tree_size;
+	std::string start_flag;
+	_trees.clear();
+	for (int i = 0; i < tree_size; i++){
+		Node* root = ReadTree(fin);
+		_trees.push_back(root);
+	}
+}
+
+Node* RandomForest::ReadTree(std::ifstream& fin){
+	std::string flag;
+	fin >> flag;
+	if (flag == "Y"){
+		Node* p = new Node();
+		fin >> p->_threshold
+			>> p->_is_leaf
+			>> p->_leaf_identity
+			>> p->_depth
+			>> p->_feature_locations.start.x
+			>> p->_feature_locations.start.y
+			>> p->_feature_locations.end.x
+			>> p->_feature_locations.end.y;
+		p->_left_child = ReadTree(fin);
+		p->_right_child = ReadTree(fin);
+		return p;
+	}
+	else{
+		return NULL;
+	}
 }
