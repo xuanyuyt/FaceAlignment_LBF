@@ -24,13 +24,13 @@ Node::Node(Node* left, Node* right, double thres, bool leaf){
 	//offset_ = cv::Point2f(0, 0);
 }
 
-RandomForest::RandomForest(const Parameters& param, int landmark_index, int stage, std::vector<cv::Mat_<double> >& regression_targets){
+RandomForest::RandomForest(int landmark_index, int stage, std::vector<cv::Mat_<double> >& regression_targets){
 	_stage = stage;
-	_local_features_num = param._local_features_num;
+	_local_features_num = global_params._local_features_num;
 	_landmark_index = landmark_index;
-	_tree_depth = param._tree_depth;
-	_trees_num_per_forest = param._trees_num_per_forest;
-	_local_radius = param._local_radius[stage];
+	_tree_depth = global_params._tree_depth;
+	_trees_num_per_forest = global_params._trees_num_per_forest;
+	_local_radius = global_params._local_radius[stage];
 	//mean_shape_ = param.mean_shape_;
 	_regression_targets = &regression_targets; // get the address pointer, not reference
 }

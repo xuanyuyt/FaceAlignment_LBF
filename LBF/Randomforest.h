@@ -34,7 +34,7 @@ public:
 
 
 	RandomForest(){};
-	RandomForest(const Parameters& param, int landmark_index, int stage, std::vector<cv::Mat_<double> >& regression_targets);
+	RandomForest(int landmark_index, int stage, std::vector<cv::Mat_<double> >& regression_targets);
 	bool TrainForest(const std::vector<cv::Mat_<uchar> >& images,
 		const std::vector<int>& augmented_images_index,
 		const std::vector<BoundingBox>& augmented_bboxes,
