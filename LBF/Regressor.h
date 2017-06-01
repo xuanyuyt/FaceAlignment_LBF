@@ -9,8 +9,8 @@ public:
 	int _stage;
 
 	std::vector<RandomForest> _rd_forests;
-	//std::vector<struct model*> linear_model_x_;
-	//std::vector<struct model*> linear_model_y_;
+	std::vector<struct model*> _linear_model_x;
+	std::vector<struct model*> _linear_model_y;
 
 	//struct feature_node* tmp_binary_features;
 

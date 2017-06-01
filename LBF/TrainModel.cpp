@@ -28,8 +28,10 @@ void TrainModel(const char* ModelName, vector<string> trainDataName)
 		LoadData(path, images_color, images_gray, ground_truth_shapes, bounding_boxs);
 		//LoadOpencvBbxData(path, images_color, images, ground_truth_shapes, bounding_boxs);
 	}
-	global_params._mean_shape = GetMeanShape(ground_truth_shapes, bounding_boxs);//初始平均模型（归一化的）
+	global_params._mean_shape = GetMeanShape(ground_truth_shapes, bounding_boxs); //初始平均模型（归一化的）
 
 	CascadeRegressor regressor;
-	regressor.Train(images_gray, ground_truth_shapes, bounding_boxs, global_params);//开始训练
+	regressor.Train(images_gray, ground_truth_shapes, bounding_boxs, global_params); //开始训练
+
+	regressor.SaveCascadeRegressor(modelPath + ModelName); // 保存模型
 }

@@ -3,13 +3,13 @@
 using namespace std;
 
 Node::Node(){
-	left_child_ = NULL;
-	right_child_ = NULL;
-	is_leaf_ = false;
-	threshold_ = 0.0;
-	leaf_identity = -1;
-	samples_ = -1;
-	thre_changed_ = false;
+	_left_child = NULL;
+	_right_child = NULL;
+	_is_leaf = false;
+	_threshold = 0.0;
+	_leaf_identity = -1;
+	_samples = -1;
+	//_thre_changed = false;
 }
 
 Node::Node(Node* left, Node* right, double thres){
@@ -17,10 +17,10 @@ Node::Node(Node* left, Node* right, double thres){
 }
 
 Node::Node(Node* left, Node* right, double thres, bool leaf){
-	left_child_ = left;
-	right_child_ = right;
-	is_leaf_ = leaf;
-	threshold_ = thres;
+	_left_child = left;
+	_right_child = right;
+	_is_leaf = leaf;
+	_threshold = thres;
 	//offset_ = cv::Point2f(0, 0);
 }
 
@@ -103,7 +103,7 @@ bool RandomForest::TrainForest(
 	double overlap = 0.4;
 	int step = floor(((double)augmented_images_index.size())*overlap / (_trees_num_per_forest - 1));
 	_trees.clear();
-	_all_leaf_nodes = 0;
+	_all_leaf_nodes = 0; // 叶子节点数
 	for (int i = 0; i < _trees_num_per_forest; i++){//8棵树
 		int start_index = i*step;
 		int end_index = augmented_images_index.size() - (_trees_num_per_forest - i - 1)*step;
@@ -128,14 +128,15 @@ Node* RandomForest::BuildTree(set<int>& selected_indexes, cv::Mat_<int>& pixel_d
 	if (images_indexes.size() > 0) // 判断样本集合是否为空
 	{
 		Node* node = new Node(); // 根节点
-		node->depth_ = current_depth;//当前节点深度
-		node->samples_ = images_indexes.size();//样本容量
+		node->_depth = current_depth;//当前节点深度
+		node->_samples = images_indexes.size();//样本容量
 		vector<int> left_indexes, right_indexes; // 左右子节点样本索引
 
 		if (current_depth == _tree_depth) // 判断是否达到最大深度
 		{
-			node->is_leaf_ = true;
-			node->leaf_identity = _all_leaf_nodes;
+			node->_is_leaf = true;
+			node->_leaf_identity = _all_leaf_nodes;
+			_all_leaf_nodes++;
 			return node;
 		}
 
@@ -144,14 +145,14 @@ Node* RandomForest::BuildTree(set<int>& selected_indexes, cv::Mat_<int>& pixel_d
 		
 		// actually it won't enter the if block, when the random function is good enough
 		if (ret == 1){ // the current node contain all sample when reaches max variance reduction, it is leaf node
-			node->is_leaf_ = true;
-			node->leaf_identity = _all_leaf_nodes;
+			node->_is_leaf = true;
+			node->_leaf_identity = _all_leaf_nodes;
 			_all_leaf_nodes++;
 			return node;
 		}
 
-		node->left_child_ = BuildTree(selected_indexes, pixel_differences, left_indexes, current_depth + 1);
-		node->right_child_ = BuildTree(selected_indexes, pixel_differences, right_indexes, current_depth + 1);
+		node->_left_child = BuildTree(selected_indexes, pixel_differences, left_indexes, current_depth + 1);
+		node->_right_child = BuildTree(selected_indexes, pixel_differences, right_indexes, current_depth + 1);
 
 		return node;
 	}
@@ -255,12 +256,12 @@ int RandomForest::FindSplitFeature(Node* node, std::set<int>& selected_indexes,
 	if (feature_index != -1) // actually feature_index will never be -1 
 	{
 		if (left_indexes.size() == 0 || right_indexes.size() == 0){
-			node->is_leaf_ = true; // the node can contain all the samples
+			node->_is_leaf = true; // the node can contain all the samples
 			return 1; // 到达叶子节点
 		}
-		node->threshold_ = threshold; // f分裂阈值
+		node->_threshold = threshold; // f分裂阈值
 		//node->thre_changed_ = true;
-		node->feature_locations_ = _local_position[feature_index]; // 相对索引值
+		node->_feature_locations = _local_position[feature_index]; // 相对索引值
 		selected_indexes.insert(feature_index);
 		return 0;
 	}

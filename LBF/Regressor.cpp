@@ -1,6 +1,5 @@
 #include "Regressor.h"
 using namespace std;
-using namespace cv;
 
 
 // 级联训练开始
@@ -14,10 +13,10 @@ void CascadeRegressor::Train(const std::vector<cv::Mat_<uchar> >& images,
 	// data augmentation and multiple initialization
 	vector<int> augmented_images_index;	// 图片索引	// 图片索引
 	vector<BoundingBox> augmented_bounding_boxs; //扩充后图片人脸框
-	vector<Mat_<double> > augmented_ground_truth_shapes;	//扩充后真值
-	vector<Mat_<double> > augmented_current_shapes;	//扩充后当前形状
+	vector<cv::Mat_<double> > augmented_ground_truth_shapes;	//扩充后真值
+	vector<cv::Mat_<double> > augmented_current_shapes;	//扩充后当前形状
 
-	RNG random_generator(getTickCount());
+	cv::RNG random_generator(cv::getTickCount());
 	for (int i = 0; i < images.size(); i++){
 		for (int j = 0; j < global_params._initial_num; j++){
 			int index = 0;
@@ -31,7 +30,7 @@ void CascadeRegressor::Train(const std::vector<cv::Mat_<uchar> >& images,
 			augmented_bounding_boxs.push_back(bboxes[i]);
 
 			// 2. Project current shape to bounding box of ground truth shapes
-			Mat_<double> temp = ProjectShape(ground_truth_shapes[index], bboxes[index]);
+			cv::Mat_<double> temp = ProjectShape(ground_truth_shapes[index], bboxes[index]);
 			temp = ReProjectShape(temp, bboxes[i]);
 			augmented_current_shapes.push_back(temp);
 		}
@@ -61,17 +60,17 @@ void CascadeRegressor::Train(const std::vector<cv::Mat_<uchar> >& images,
 }
 
 
-vector<Mat_<double> > Regressor::Train(const vector<Mat_<uchar> >& images,
+vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& images,
 	const vector<int>& augmented_images_index,
-	const vector<Mat_<double> >& augmented_ground_truth_shapes,
+	const vector<cv::Mat_<double> >& augmented_ground_truth_shapes,
 	const vector<BoundingBox>& augmented_bboxes,
-	const vector<Mat_<double> >& augmented_current_shapes,
+	const vector<cv::Mat_<double> >& augmented_current_shapes,
 	const Parameters& params,
 	const int stage)
 {
 	_stage = stage;
-	vector<Mat_<double> > regression_targets; // 回归目标
-	vector<Mat_<double> > rotations; // 相似变换旋转矩阵
+	vector<cv::Mat_<double> > regression_targets; // 回归目标
+	vector<cv::Mat_<double> > rotations; // 相似变换旋转矩阵
 	vector<double> scales; // 相似变换缩放因子
 	regression_targets.resize(augmented_current_shapes.size());
 	rotations.resize(augmented_current_shapes.size());
@@ -108,15 +107,133 @@ vector<Mat_<double> > Regressor::Train(const vector<Mat_<uchar> >& images,
 	struct feature_node **global_binary_features;
 	global_binary_features = new struct feature_node*[augmented_current_shapes.size()];
 
-	for (int i = 0; i < augmented_current_shapes.size(); ++i){
-		global_binary_features[i] = new feature_node[params._trees_num*params._landmarks_num + 1];//为什么+1
+	for (int i = 0; i < augmented_current_shapes.size(); ++i)
+	{
+		global_binary_features[i] = new feature_node[params._trees_num * params._landmarks_num + 1];//+1 是标识符
+	}
+	int num_feature = 0;//随机森林所有叶子节点数
+	for (int i = 0; i < params._landmarks_num; ++i){
+		num_feature += _rd_forests[i]._all_leaf_nodes;// landmarks×2^depth
 	}
 
-	std::cout << "Global Regression of stage " << _stage << std::endl;
+	for (int i = 0; i < augmented_current_shapes.size(); ++i)
+	{
+		int index = 1; // 叶子节点索引，从1开始
+		int ind = 0; // 序号 0 ~ landmarks×trees-1
+		const cv::Mat_<double>& rotation = rotations[i];
+		const double scale = scales[i];
+		const cv::Mat_<uchar>& image = images[augmented_images_index[i]];
+		const BoundingBox& bbox = augmented_bboxes[i];
+		const cv::Mat_<double>& current_shape = augmented_current_shapes[i];
 
+		for (int j = 0; j < params._landmarks_num; ++j) // 每个特征点
+		{
+			for (int k = 0; k < params._trees_num; ++k) // 每棵树
+			{
+				Node* node = _rd_forests[j]._trees[k];
+				while (!node->_is_leaf) // 非叶节点
+				{
+					FeatureLocations& pos = node->_feature_locations; // 最优分裂特征索引
+					double delta_x = rotation(0, 0)*pos.start.x + rotation(0, 1)*pos.start.y;
+					double delta_y = rotation(1, 0)*pos.start.x + rotation(1, 1)*pos.start.y;
+					delta_x = scale*delta_x*bbox.width / 2.0;
+					delta_y = scale*delta_y*bbox.height / 2.0;
+					int real_x = delta_x + current_shape(j, 0);
+					int real_y = delta_y + current_shape(j, 1);
+					real_x = std::max(0, std::min(real_x, image.cols - 1)); // which cols
+					real_y = std::max(0, std::min(real_y, image.rows - 1)); // which rows
+					int tmp = (int)image(real_y, real_x); //real_y at first
+
+					delta_x = rotation(0, 0)*pos.end.x + rotation(0, 1)*pos.end.y;
+					delta_y = rotation(1, 0)*pos.end.x + rotation(1, 1)*pos.end.y;
+					delta_x = scale*delta_x*bbox.width / 2.0;
+					delta_y = scale*delta_y*bbox.height / 2.0;
+					real_x = delta_x + current_shape(j, 0);
+					real_y = delta_y + current_shape(j, 1);
+					real_x = std::max(0, std::min(real_x, image.cols - 1)); // which cols
+					real_y = std::max(0, std::min(real_y, image.rows - 1)); // which rows
+					// 节点分裂
+					if ((tmp - (int)image(real_y, real_x)) < node->_threshold)
+					{
+						node = node->_left_child;// go left
+					}
+					else
+					{
+						node = node->_right_child;// go right
+					}
+				}
+				//样本i在第ind颗树上落到的叶子节点序号，从1开始(1-25; 26-50; ...)
+				global_binary_features[i][ind].index = index + node->_leaf_identity;// 
+				global_binary_features[i][ind].value = 1.0;
+				ind++;
+			}
+			index += _rd_forests[j]._all_leaf_nodes;
+		}
+		if (i % 500 == 0 && i > 0){
+			cout << "extracted " << i << " images" << endl;
+		}
+		global_binary_features[i][params._trees_num*params._landmarks_num].index = -1; //标记编码结束
+		global_binary_features[i][params._trees_num*params._landmarks_num].value = -1.0;//标记编码结束
+	}
+
+	/* 训练回归器 */
+	struct problem* prob = new struct problem;
+	prob->l = augmented_current_shapes.size();
+	prob->n = num_feature;
+	prob->x = global_binary_features;
+	prob->bias = -1;
+
+	struct parameter* regression_params = new struct parameter;
+	regression_params->solver_type = L2R_L2LOSS_SVR_DUAL;
+	regression_params->C = 1.0 / augmented_current_shapes.size();
+	regression_params->p = 0;
+	//regression_params->eps = 0.0001;
+
+	std::cout << "Global Regression of stage " << _stage << std::endl;
+	_linear_model_x.resize(params._landmarks_num);
+	_linear_model_y.resize(params._landmarks_num);
+	double* targets = new double[augmented_current_shapes.size()];
+	for (int i = 0; i < params._landmarks_num; ++i) //回归每个landmark
+	{
+		std::cout << "regress landmark " << i << std::endl;
+		for (int j = 0; j< augmented_current_shapes.size(); j++){
+			targets[j] = regression_targets[j](i, 0);
+		}
+		prob->y = targets;
+		check_parameter(prob, regression_params);
+		struct model* regression_model = train(prob, regression_params);
+		_linear_model_x[i] = regression_model;
+		for (int j = 0; j < augmented_current_shapes.size(); j++){
+			targets[j] = regression_targets[j](i, 1);
+		}
+		prob->y = targets;
+		check_parameter(prob, regression_params);
+		regression_model = train(prob, regression_params);
+		_linear_model_y[i] = regression_model;
+	}
 
 	std::cout << "predict regression targets" << std::endl;
 	std::vector<cv::Mat_<double> > predict_regression_targets;
+	predict_regression_targets.resize(augmented_current_shapes.size());
+	for (int i = 0; i < augmented_current_shapes.size(); i++){
+		cv::Mat_<double> atargets_predict(params._landmarks_num, 2, 0.0);
+		for (int j = 0; j < params._landmarks_num; j++){
+			atargets_predict(j, 0) = predict(_linear_model_x[j], global_binary_features[i]);
+			atargets_predict(j, 1) = predict(_linear_model_y[j], global_binary_features[i]);
+		}
+		cv::Mat_<double> rot;
+		cv::transpose(rotations[i], rot);//转置矩阵？？
+		predict_regression_targets[i] = scales[i] * atargets_predict * rot;
+		if (i % 500 == 0 && i > 0){
+			std::cout << "predict " << i << " images" << std::endl;
+		}
+	}
+	delete[] targets;
+	for (int i = 0; i< augmented_current_shapes.size(); i++)
+	{
+		delete[] global_binary_features[i];
+	}
+	delete[] global_binary_features;
 
 	return predict_regression_targets;
 }

@@ -6,15 +6,14 @@
 
 class Node {
 public:
-	int leaf_identity; // 叶子节点数量
-	Node* left_child_; // 左子节点
-	Node* right_child_; // 右子节点
-	int samples_; // 样本容量
-	bool is_leaf_; // 是否为叶子节点
-	int depth_; // 当前节点深度
-	double threshold_; // 分裂阈值
-	bool thre_changed_; // 
-	FeatureLocations feature_locations_; // 最优分裂像素差特征的相对索引
+	int _leaf_identity; // 叶子节点处序号 0 ~ 2^depth-1
+	Node* _left_child; // 左子节点
+	Node* _right_child; // 右子节点
+	int _samples; // 样本容量
+	bool _is_leaf; // 是否为叶子节点
+	int _depth; // 当前节点深度
+	double _threshold; // 分裂阈值 
+	FeatureLocations _feature_locations; // 最优分裂像素差特征的相对索引
 	Node(Node* left, Node* right, double thres, bool leaf);
 	Node(Node* left, Node* right, double thres);
 	Node();
