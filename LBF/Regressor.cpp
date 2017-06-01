@@ -8,6 +8,8 @@ void CascadeRegressor::Train(const std::vector<cv::Mat_<uchar> >& images,
 	const std::vector<BoundingBox>& bboxes,
 	const Parameters& params)
 {
+	_params = params;
+	_Models.resize(params._regressor_stages);
 	std::cout << "Start training..." << std::endl;
 
 	// data augmentation and multiple initialization
@@ -59,6 +61,22 @@ void CascadeRegressor::Train(const std::vector<cv::Mat_<uchar> >& images,
 	}
 }
 
+cv::Mat_<double> CascadeRegressor::Predict(const cv::Mat_<uchar>& image,
+	cv::Mat_<double>& current_shape, BoundingBox& bbox){
+
+	for (int i = 0; i < _params._regressor_stages; i++){
+		cv::Mat_<double> rotation;
+		double scale;
+		SimilarityTransform(ProjectShape(current_shape, bbox), _params._mean_shape, rotation, scale);
+		cv::Mat_<double> shape_increaments = _regressors[i].Predict(image, current_shape, bbox, rotation, scale);
+		current_shape = shape_increaments + ProjectShape(current_shape, bbox);
+		current_shape = ReProjectShape(current_shape, bbox);
+	}
+	cv::Mat_<double> res = current_shape;
+	return res;
+}
+
+
 
 vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& images,
 	const vector<int>& augmented_images_index,
@@ -68,6 +86,7 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 	const Parameters& params,
 	const int stage)
 {
+	_params = params;
 	_stage = stage;
 	vector<cv::Mat_<double> > regression_targets; // 回归目标
 	vector<cv::Mat_<double> > rotations; // 相似变换旋转矩阵
@@ -238,10 +257,85 @@ vector<cv::Mat_<double> > Regressor::Train(const vector<cv::Mat_<uchar> >& image
 	return predict_regression_targets;
 }
 
+
+cv::Mat_<double> Regressor::Predict(const cv::Mat_<uchar>& image,
+	cv::Mat_<double>& current_shape, BoundingBox& bbox, cv::Mat_<double>& rotation, double scale){
+
+	cv::Mat_<double> predict_result(current_shape.rows, current_shape.cols, 0.0);
+
+	feature_node* binary_features = GetGlobalBinaryFeatures(image, current_shape, bbox, rotation, scale);
+
+	for (int i = 0; i < current_shape.rows; i++){
+		predict_result(i, 0) = predict(_linear_model_x[i], binary_features);
+		predict_result(i, 1) = predict(_linear_model_y[i], binary_features);
+	}
+
+	cv::Mat_<double> rot;
+	cv::transpose(rotation, rot);
+	delete[] binary_features;
+	//delete[] tmp_binary_features;
+	return scale*predict_result*rot;
+}
+
+struct feature_node* Regressor::GetGlobalBinaryFeatures(const cv::Mat_<uchar>& image,
+	cv::Mat_<double>& current_shape, BoundingBox& bbox, cv::Mat_<double>& rotation, double scale){
+	int index = 1;
+
+	struct feature_node* binary_features = new feature_node[_params._trees_num_per_forest*_params._landmarks_num_per_face + 1];
+	int ind = 0;
+	for (int j = 0; j < _params._landmarks_num_per_face; ++j)
+	{
+		for (int k = 0; k < _params._trees_num_per_forest; ++k)
+		{
+			Node* node = _rd_forests[j]._trees[k];
+			while (!node->_is_leaf){
+				FeatureLocations& pos = node->_feature_locations;
+				double delta_x = rotation(0, 0)*pos.start.x + rotation(0, 1)*pos.start.y;
+				double delta_y = rotation(1, 0)*pos.start.x + rotation(1, 1)*pos.start.y;
+				delta_x = scale*delta_x*bbox.width / 2.0;
+				delta_y = scale*delta_y*bbox.height / 2.0;
+				int real_x = delta_x + current_shape(j, 0);
+				int real_y = delta_y + current_shape(j, 1);
+				real_x = std::max(0, std::min(real_x, image.cols - 1)); // which cols
+				real_y = std::max(0, std::min(real_y, image.rows - 1)); // which rows
+				int tmp = (int)image(real_y, real_x); //real_y at first
+
+				delta_x = rotation(0, 0)*pos.end.x + rotation(0, 1)*pos.end.y;
+				delta_y = rotation(1, 0)*pos.end.x + rotation(1, 1)*pos.end.y;
+				delta_x = scale*delta_x*bbox.width / 2.0;
+				delta_y = scale*delta_y*bbox.height / 2.0;
+				real_x = delta_x + current_shape(j, 0);
+				real_y = delta_y + current_shape(j, 1);
+				real_x = std::max(0, std::min(real_x, image.cols - 1)); // which cols
+				real_y = std::max(0, std::min(real_y, image.rows - 1)); // which rows
+				if ((tmp - (int)image(real_y, real_x)) < node->_threshold){
+					node = node->_left_child;// go left
+				}
+				else{
+					node = node->_right_child;// go right
+				}
+			}
+
+			//int ind = j*params_.trees_num_per_forest_ + k;
+			binary_features[ind].index = index + node->_leaf_identity;//rd_forests_[j].GetBinaryFeatureIndex(k,image, bbox, current_shape, rotation, scale);
+			binary_features[ind].value = 1.0;
+			ind++;
+			//std::cout << binary_features[ind].index << " ";
+		}
+
+		index += _rd_forests[j]._all_leaf_nodes;
+	}
+	//std::cout << "\n";
+	//std::cout << index << ":" << params_.trees_num_per_forest_*params_.landmarks_num_per_face_ << std::endl;
+	binary_features[_params._trees_num_per_forest*_params._landmarks_num_per_face].index = -1;
+	binary_features[_params._trees_num_per_forest*_params._landmarks_num_per_face].value = -1.0;
+	return binary_features;
+}
+
 void CascadeRegressor::SaveCascadeRegressor(std::string ModelName){
 	std::ofstream fout;
 
-	fout.open((ModelName + "_params").c_str(), std::fstream::out);
+	fout.open(ModelName);
 	fout << _params._local_features_num << " "
 		<< _params._landmarks_num_per_face << " "
 		<< _params._regressor_stages << " "
@@ -255,24 +349,20 @@ void CascadeRegressor::SaveCascadeRegressor(std::string ModelName){
 		fout << _params._mean_shape(i, 0) << " " << _params._mean_shape(i, 1) << std::endl;
 	}
 
-	fout.close();
-
-	fout.open(ModelName + "_regressors", ios::binary);
+	ofstream fout_reg;
+	fout_reg.open(modelPath + "Regressor.model", ios::binary);
 
 	for (int i = 0; i < _params._regressor_stages; i++){
-		_regressors[i].SaveRegressor(fout);
-		fout << _Models[i].size() << endl;
-		for (int j = 0; j<_Models[i].size(); j++){
-			save_model_bin(fout, _Models[i][j]);
-		}
-		
+		_regressors[i].SaveRegressor(fout, fout_reg);
 	}
+
 	fout.close();
+	fout_reg.close();
 }
 
 void CascadeRegressor::LoadCascadeRegressor(std::string ModelName){
 	std::ifstream fin;
-	fin.open((ModelName + "_params").c_str(), std::fstream::in);
+	fin.open(ModelName);
 	_params = Parameters();
 	fin >> _params._local_features_num
 		>> _params._landmarks_num_per_face
@@ -294,24 +384,20 @@ void CascadeRegressor::LoadCascadeRegressor(std::string ModelName){
 	}
 	_params._mean_shape = mean_shape;
 
-	fin.close();
-	fin.open((ModelName + "_regressors").c_str(), std::fstream::in);
+	ifstream fin_reg;
+	fin_reg.open(modelPath + "Regressor.model", ios::binary);
 	_regressors.resize(_params._regressor_stages);
 	for (int i = 0; i < _params._regressor_stages; i++){
 		_regressors[i]._params = _params;
-		_regressors[i].LoadRegressor(fin);
+		_regressors[i].LoadRegressor(fin, fin_reg);
 		_regressors[i].ConstructLeafCount();
-		int num = 0;
-		fin >> num;
-		_Models[i].resize(num);
-		for (int j = 0; j<num; j++){
-			_Models[i][j] = load_model_bin(fin);
-		}
-
 	}
+
+	fin.close();
+	fin_reg.close();
 }
 
-void Regressor::SaveRegressor(std::ofstream& fout)
+void Regressor::SaveRegressor(std::ofstream& fout, std::ofstream& fout_reg)
 {
 	fout << _stage << " "
 		<< _rd_forests.size() << " "
@@ -320,16 +406,27 @@ void Regressor::SaveRegressor(std::ofstream& fout)
 	for (int i = 0; i < _rd_forests.size(); i++){
 		_rd_forests[i].SaveRandomForest(fout);
 	}
-
+	for (int j = 0; j< _linear_model_x.size(); j++){
+		save_model_bin(fout_reg, _linear_model_x[j]);
+		save_model_bin(fout_reg, _linear_model_y[j]);
+	}
 }
 
-void Regressor::LoadRegressor(std::ifstream& fin)
+void Regressor::LoadRegressor(std::ifstream& fin, std::ifstream& fin_reg)
 {
 	int rd_size, linear_size;
 	fin >> _stage >> rd_size >> linear_size;
 	_rd_forests.resize(rd_size);
 	for (int i = 0; i < rd_size; i++){
 		_rd_forests[i].LoadRandomForest(fin);
+	}
+	_linear_model_x.resize(linear_size);
+	_linear_model_y.resize(linear_size);
+	std::string flag;
+	for (int i = 0; i < linear_size; i++)
+	{
+		_linear_model_x[i] = load_model_bin(fin_reg);
+		_linear_model_y[i] = load_model_bin(fin_reg);
 	}
 
 }

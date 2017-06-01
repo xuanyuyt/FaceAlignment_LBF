@@ -43,7 +43,7 @@ bool RandomForest::TrainForest(
 	const std::vector<cv::Mat_<double> >& rotations,
 	const std::vector<double>& scales)
 {
-	cout << "build forest of landmark: " << _landmark_index << " of stage: " << _stage << endl;
+	cout << "build forest of landmark: " << _landmark_index << " of stage: " << _stage+1 << endl;
 
 	// random generate feature locations
 	cout << "generate feature locations" << endl;

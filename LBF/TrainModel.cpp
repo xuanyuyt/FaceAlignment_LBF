@@ -11,6 +11,7 @@ void TrainModel(const char* ModelName, vector<string> trainDataName)
 	vector<Mat_<double>> ground_truth_shapes;
 	vector<BoundingBox> bounding_boxs;
 
+	cout << "Loading Dataset..." << endl;
 	for (int i = 0; i<trainDataName.size(); i++){
 		string path;
 		if (trainDataName[i] == "COFW")
@@ -33,5 +34,6 @@ void TrainModel(const char* ModelName, vector<string> trainDataName)
 	CascadeRegressor regressor;
 	regressor.Train(images_gray, ground_truth_shapes, bounding_boxs, global_params); //开始训练
 
-	regressor.SaveCascadeRegressor(modelPath + ModelName); // 保存模型
+	cout << "Saving model" << endl;
+	regressor.SaveCascadeRegressor(modelPath + "LBF.model"); // 保存模型
 }

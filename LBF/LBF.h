@@ -28,6 +28,8 @@ public:
 extern Parameters global_params;
 extern std::string modelPath;
 extern std::string dataPath;
+extern std::string cascadeName;
+
 
 class BoundingBox{
 public:
@@ -65,6 +67,8 @@ public:
 
 // 训练数据集
 void TrainModel(const char* ModelName, std::vector<std::string> trainDataName);
+// 测试数据集
+void TestModel(const char* ModelName, std::vector<std::string> testDataName);
 
 // 加载常规数据集
 void LoadData(std::string file_names,
@@ -91,5 +95,8 @@ void SimilarityTransform(const cv::Mat_<double>& shape_to,
 	const cv::Mat_<double>& shape_from,
 	cv::Mat_<double>& rotation, double& scale);
 
+
+double CalculateError68(cv::Mat_<double>& ground_truth_shape, cv::Mat_<double>& predicted_shape);
+void DrawPredictedImage(cv::Mat &image, cv::Mat_<double>& shape);
 
 #endif // !LBF_H

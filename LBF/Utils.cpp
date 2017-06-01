@@ -20,16 +20,16 @@ void LoadData(string filepath,
 	{
 		name.erase(0, name.find_first_not_of("  ")); // 去前面空格
 		name.erase(name.find_last_not_of("  ") + 1); // 去后面空格
-		cout << "file:" << name << endl;
+		//cout << "file:" << name << endl;
 
 		// Read Image
-		//const Mat image = cv::imread(name, 1);
+		const Mat image = cv::imread(name, 1);
 		Mat_<uchar> gray = imread(name, 0);
 		if (gray.data == NULL){
 			std::cerr << "could not load " << name << std::endl;
 			continue;
 		}
-		//images_color.push_back(image);
+		images_color.push_back(image);
 		images_gray.push_back(gray);
 
 		// Read ground truth shapes
@@ -184,4 +184,28 @@ void SimilarityTransform(const Mat_<double>& shape1,
 	rotation(0, 1) = -sin_theta;
 	rotation(1, 0) = sin_theta;
 	rotation(1, 1) = cos_theta;
+}
+
+
+void DrawPredictedImage(cv::Mat &image, cv::Mat_<double>& shape){
+	for (int i = 0; i < shape.rows; i++){
+		circle(image, Point2d(shape(i, 0), shape(i, 1)), 2, Scalar(0, 0, 0), 3, 8, 0);
+		cv::circle(image, cv::Point2f(shape(i, 0), shape(i, 1)), 1, Scalar(255, 255, 255), 2, 8, 0);
+		//cout << shape(i, 0)<<" " << shape(i, 1) << endl;
+	}
+	imshow("show image", image);
+}
+
+
+double CalculateError68(Mat_<double>& ground_truth_shape, Mat_<double>& predicted_shape){
+	Mat_<double> temp;
+	temp = ground_truth_shape.rowRange(36, 41) - ground_truth_shape.rowRange(42, 47);
+	double x = mean(temp.col(0))[0];
+	double y = mean(temp.col(1))[0];
+	double interocular_distance = sqrt(x*x + y*y);
+	double sum = 0;
+	for (int i = 0; i<ground_truth_shape.rows; i++){
+		sum += norm(ground_truth_shape.row(i) - predicted_shape.row(i));
+	}
+	return sum / (ground_truth_shape.rows*interocular_distance);
 }

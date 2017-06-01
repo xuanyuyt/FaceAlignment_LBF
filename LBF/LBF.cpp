@@ -3,7 +3,7 @@
 
 using namespace std;
 
-string modelPath = "../model/";
+string modelPath = "./model/";
 string dataPath = "D:/Projects_Face_Detection/Datasets/";
 string cascadeName = "../haarcascade_frontalface_alt.xml";
 
@@ -44,7 +44,7 @@ int main(int argc, const char** argv)
 		// you need to modify this section according to your training dataset
 		testDataName.push_back("IBUG");
 		//   testDataName.push_back("helen");
-		//double MRSE = TestModel(argv[2], testDataName);
+		TestModel(argv[2], testDataName);
 
 	}
 	else if (strcmp(argv[1], "Demo") == 0){
@@ -68,12 +68,12 @@ int main(int argc, const char** argv)
 void InitializeGlobalParam()
 {
 	global_params._bagging_overlap = 0.4;
-	global_params._trees_num_per_forest = 8;
-	global_params._tree_depth = 5;
+	global_params._trees_num_per_forest = 5;
+	global_params._tree_depth = 3;
 	global_params._landmarks_num_per_face = 68;
-	global_params._initial_num = 10;
+	global_params._initial_num = 1;
 
-	global_params._regressor_stages = 10;
+	global_params._regressor_stages = 1;
 	global_params._local_radius.push_back(0.4);
 	global_params._local_radius.push_back(0.3);
 	global_params._local_radius.push_back(0.25);
@@ -84,7 +84,7 @@ void InitializeGlobalParam()
 	global_params._local_radius.push_back(0.07);
 	global_params._local_radius.push_back(0.06);
 	global_params._local_radius.push_back(0.05);
-	global_params._local_features_num = 500;
+	global_params._local_features_num = 100;
 }
 
 void PrintHelp(){

@@ -88,6 +88,7 @@
     <ClCompile Include="liblinear\tron.cpp" />
     <ClCompile Include="Randomforest.cpp" />
     <ClCompile Include="Regressor.cpp" />
+    <ClCompile Include="TestModel.cpp" />
     <ClCompile Include="TrainModel.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
