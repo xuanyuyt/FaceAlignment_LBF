@@ -6,8 +6,7 @@ using namespace std;
 void TestImage(Mat& img, CascadeRegressor& rg){
 	extern string cascadeName;
 	cv::CascadeClassifier haar_cascade;
-	bool yes = haar_cascade.load(cascadeName);
-	//std::cout << "detector: " << yes << std::endl;
+	bool yes = haar_cascade.load(cascadeName); // 加载人脸检测器
 	double scale = 1.3;
 	Mat gray, smallImg(cvRound(img.rows / scale), cvRound(img.cols / scale), CV_8UC1);//灰度和灰度直方图均衡化的图片
 
@@ -31,11 +30,12 @@ void TestImage(Mat& img, CascadeRegressor& rg){
 		cv::Mat_<double> res = rg.Predict(gray, current_shape, bbox);//, ground_truth_shapes[i]);
 
 		// draw bounding box
-		rectangle(img, cvPoint(bbox.start_x, bbox.start_y),
-			cvPoint(bbox.start_x + bbox.width, bbox.start_y + bbox.height), Scalar(0, 255, 0), 1, 8, 0);
+		rectangle(img, Point(bbox.start_x, bbox.start_y),
+			Point(bbox.start_x + bbox.width, bbox.start_y + bbox.height), Scalar(0, 255, 0), 1, 8, 0);
 		// draw result :: red
 		for (int i = 0; i < res.rows; i++){
-			cv::circle(img, cv::Point2f(res(i, 0), res(i, 1)), 1, Scalar(255, 255, 255), 1, 8, 0);
+			circle(img, Point2d(res(i, 0), res(i, 1)), 2, Scalar(0, 0, 0), 3, 8, 0);
+			circle(img, cv::Point2f(res(i, 0), res(i, 1)), 1, Scalar(255, 255, 255), 2, 8, 0);
 			//cout << shape(i, 0)<<" " << shape(i, 1) << endl;
 		}
 	}
@@ -43,27 +43,31 @@ void TestImage(Mat& img, CascadeRegressor& rg){
 }
 
 
-int FaceDetectionAndAlignment(const char* name){
+int FaceDetectionAndAlignment(const char* name)
+{
 	CascadeRegressor cas_load;
 	cas_load.LoadCascadeRegressor(modelPath + "LBF.model");
 
 	string inputName;//图片
-	CvCapture* capture = 0;
+	//CvCapture* capture = 0;
+	cv::VideoCapture capture = 0;
 	Mat frame, frameCopy, image;
 	if (name != NULL){
 		inputName.assign(name);
 	}
 	// name is empty or a number摄像头模式
-	if (inputName.empty() || (isdigit(inputName.c_str()[0]) && inputName.c_str()[1] == '\0')){
-		capture = cvCaptureFromCAM(inputName.empty() ? 0 : inputName.c_str()[0] - '0');
-		int c = inputName.empty() ? 0 : inputName.c_str()[0] - '0';
-		if (!capture){
+	if (inputName.empty())
+	{
+		capture.open(0);
+		if (!capture.isOpened()){
+			int c = inputName.empty() ? 0 : inputName.c_str()[0] - '0';
 			cout << "Capture from CAM " << c << " didn't work" << endl;
 			return -1;
 		}
 	}
 	// name is not empty数据模式
-	else if (inputName.size()){
+	else if (inputName.size())
+	{
 		if (inputName.find(".jpg") != string::npos || inputName.find(".png") != string::npos
 			|| inputName.find(".bmp") != string::npos){//图片
 			image = imread(inputName, 1);
@@ -74,44 +78,44 @@ int FaceDetectionAndAlignment(const char* name){
 		}
 		else if (inputName.find(".mp4") != string::npos || inputName.find(".avi") != string::npos
 			|| inputName.find(".wmv") != string::npos){//视频
-			capture = cvCaptureFromAVI(inputName.c_str());
-			if (!capture) cout << "Capture from AVI didn't work" << endl;
-
+			capture.open(inputName.c_str());
+			if (!capture.isOpened())
+			{
+				cout << "Capture from AVI didn't work" << endl;
+			}
 		}
 	}
 
-	cvNamedWindow("result", 1);
-	if (capture){//视频模式
+	cv::namedWindow("result", 1);
+	if (capture.isOpened())//视频模式
+	{
+		double rate = capture.get(CV_CAP_PROP_FPS);
+		bool stop(false);
+		int delay = 1000 / rate;
 		cout << "In capture ..." << endl;
-		for (;;){
-			IplImage* iplImg = cvQueryFrame(capture);
-			frame = cvarrToMat(iplImg, true);
+		while (!stop)
+		{
+			capture >> frame;
 			if (frame.empty())
 				break;
-			if (iplImg->origin == IPL_ORIGIN_TL)
-				frame.copyTo(frameCopy);
 			else
-				flip(frame, frameCopy, 0);
-
-			TestImage(frameCopy, cas_load);
-
-			if (waitKey(10) >= 0)
-				goto _cleanup_;
+				TestImage(frameCopy, cas_load);
+			if (waitKey(delay) >= 0)
+				stop = true;
 		}
-
 		waitKey(0);
-
-	_cleanup_:
-		cvReleaseCapture(&capture);
+		capture.release();
 	}
-	else{
-
-		if (!image.empty()){//单个图片模式
+	else
+	{
+		if (!image.empty())
+		{//单个图片模式
 			cout << "In image read" << endl;
 			TestImage(image, cas_load);
 			waitKey(0);
 		}
-		else if (!inputName.empty()){//数据集模式
+		else if (!inputName.empty()) // 数据集模式
+		{
 			/* assume it is a text file containing the
 			list of the image filenames to be processed - one per line */
 			cout << "In image set model" << endl;
@@ -139,8 +143,5 @@ int FaceDetectionAndAlignment(const char* name){
 			}
 		}
 	}
-
-	cvDestroyWindow("result");
-
 	return 0;
 }

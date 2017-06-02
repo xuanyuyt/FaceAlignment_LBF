@@ -190,8 +190,7 @@ void SimilarityTransform(const Mat_<double>& shape1,
 void DrawPredictedImage(cv::Mat &image, cv::Mat_<double>& shape){
 	for (int i = 0; i < shape.rows; i++){
 		circle(image, Point2d(shape(i, 0), shape(i, 1)), 2, Scalar(0, 0, 0), 3, 8, 0);
-		cv::circle(image, cv::Point2f(shape(i, 0), shape(i, 1)), 1, Scalar(255, 255, 255), 2, 8, 0);
-		//cout << shape(i, 0)<<" " << shape(i, 1) << endl;
+		circle(image, cv::Point2f(shape(i, 0), shape(i, 1)), 1, Scalar(255, 255, 255), 2, 8, 0);
 	}
 	imshow("show image", image);
 }

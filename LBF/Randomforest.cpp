@@ -286,10 +286,12 @@ void RandomForest::SaveRandomForest(std::ofstream& fout){
 
 
 void RandomForest::WriteTree(Node* p, std::ofstream& fout){
-	if (!p){
+	if (!p) // 如果节点为空
+	{
 		fout << "#" << std::endl;
 	}
-	else{
+	else
+	{
 		fout << "Y" << " "
 			<< p->_threshold << " "
 			<< p->_is_leaf << " "

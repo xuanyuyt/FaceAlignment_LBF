@@ -357,7 +357,6 @@ void CascadeRegressor::SaveCascadeRegressor(std::string ModelName){
 void CascadeRegressor::LoadCascadeRegressor(std::string ModelName){
 	std::ifstream fin;
 	fin.open(ModelName);
-	//_params = Parameters();
 	fin >> global_params._local_features_num
 		>> global_params._landmarks_num_per_face
 		>> global_params._regressor_stages
@@ -379,7 +378,7 @@ void CascadeRegressor::LoadCascadeRegressor(std::string ModelName){
 	global_params._mean_shape = mean_shape;
 
 	ifstream fin_reg;
-	fin_reg.open(modelPath + "Regressor.model", ios::binary);
+	fin_reg.open(modelPath + "Regressor.model", ios::binary); // 回归器模型，包括随机森林模型和Liblinear回归模型
 	_regressors.resize(global_params._regressor_stages);
 	for (int i = 0; i < global_params._regressor_stages; i++){
 		_regressors[i].LoadRegressor(fin, fin_reg);
