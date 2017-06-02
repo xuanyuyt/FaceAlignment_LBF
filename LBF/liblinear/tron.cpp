@@ -41,10 +41,11 @@ void TRON::info(const char *fmt,...)
 	(*tron_print_string)(buf);
 }
 
-TRON::TRON(const function *fun_obj, double eps, int max_iter)
+TRON::TRON(const function *fun_obj, double eps, double eps_cg, int max_iter)
 {
 	this->fun_obj=const_cast<function *>(fun_obj);
 	this->eps=eps;
+	this->eps_cg=eps_cg;
 	this->max_iter=max_iter;
 	tron_print_string = default_print;
 }
@@ -68,26 +69,32 @@ void TRON::tron(double *w)
 	int search = 1, iter = 1, inc = 1;
 	double *s = new double[n];
 	double *r = new double[n];
-	double *w_new = new double[n];
 	double *g = new double[n];
 
+	// calculate gradient norm at w=0 for stopping condition.
+	double *w0 = new double[n];
 	for (i=0; i<n; i++)
-		w[i] = 0;
+		w0[i] = 0;
+	fun_obj->fun(w0);
+	fun_obj->grad(w0, g);
+	double gnorm0 = dnrm2_(&n, g, &inc);
+	delete [] w0;
 
 	f = fun_obj->fun(w);
 	fun_obj->grad(w, g);
 	delta = dnrm2_(&n, g, &inc);
-	double gnorm1 = delta;
-	double gnorm = gnorm1;
+	double gnorm = delta;
 
-	if (gnorm <= eps*gnorm1)
+	if (gnorm <= eps*gnorm0)
 		search = 0;
 
 	iter = 1;
 
+	double *w_new = new double[n];
+	bool reach_boundary;
 	while (iter <= max_iter && search)
 	{
-		cg_iter = trcg(delta, g, s, r);
+		cg_iter = trcg(delta, g, s, r, &reach_boundary);
 
 		memcpy(w_new, w, sizeof(double)*n);
 		daxpy_(&n, &one, s, &inc, w_new, &inc);
@@ -118,7 +125,12 @@ void TRON::tron(double *w)
 		else if (actred < eta2*prered)
 			delta = max(sigma1*delta, min(alpha*snorm, sigma3*delta));
 		else
-			delta = max(delta, min(alpha*snorm, sigma3*delta));
+		{
+			if (reach_boundary)
+				delta = sigma3*delta;
+			else
+				delta = max(delta, min(alpha*snorm, sigma3*delta));
+		}
 
 		info("iter %2d act %5.3e pre %5.3e delta %5.3e f %5.3e |g| %5.3e CG %3d\n", iter, actred, prered, delta, f, gnorm, cg_iter);
 
@@ -130,7 +142,7 @@ void TRON::tron(double *w)
 			fun_obj->grad(w, g);
 
 			gnorm = dnrm2_(&n, g, &inc);
-			if (gnorm <= eps*gnorm1)
+			if (gnorm <= eps*gnorm0)
 				break;
 		}
 		if (f < -1.0e+32)
@@ -138,9 +150,9 @@ void TRON::tron(double *w)
 			info("WARNING: f < -1.0e+32\n");
 			break;
 		}
-		if (fabs(actred) <= 0 && prered <= 0)
+		if (prered <= 0)
 		{
-			info("WARNING: actred and prered <= 0\n");
+			info("WARNING: prered <= 0\n");
 			break;
 		}
 		if (fabs(actred) <= 1.0e-12*fabs(f) &&
@@ -157,7 +169,7 @@ void TRON::tron(double *w)
 	delete[] s;
 }
 
-int TRON::trcg(double delta, double *g, double *s, double *r)
+int TRON::trcg(double delta, double *g, double *s, double *r, bool *reach_boundary)
 {
 	int i, inc = 1;
 	int n = fun_obj->get_nr_variable();
@@ -166,13 +178,14 @@ int TRON::trcg(double delta, double *g, double *s, double *r)
 	double *Hd = new double[n];
 	double rTr, rnewTrnew, alpha, beta, cgtol;
 
+	*reach_boundary = false;
 	for (i=0; i<n; i++)
 	{
 		s[i] = 0;
 		r[i] = -g[i];
 		d[i] = r[i];
 	}
-	cgtol = 0.1*dnrm2_(&n, g, &inc);
+	cgtol = eps_cg*dnrm2_(&n, g, &inc);
 
 	int cg_iter = 0;
 	rTr = ddot_(&n, r, &inc, r, &inc);
@@ -188,6 +201,7 @@ int TRON::trcg(double delta, double *g, double *s, double *r)
 		if (dnrm2_(&n, s, &inc) > delta)
 		{
 			info("cg reaches trust region boundary\n");
+			*reach_boundary = true;
 			alpha = -alpha;
 			daxpy_(&n, &alpha, d, &inc, s, &inc);
 

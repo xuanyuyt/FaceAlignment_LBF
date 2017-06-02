@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "LBF.h"
 #include "regressor.h"
 using namespace cv;

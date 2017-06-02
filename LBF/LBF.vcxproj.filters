@@ -16,18 +16,6 @@
     <ClCompile Include="Utils.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="liblinear\daxpy.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="liblinear\ddot.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="liblinear\dnrm2.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="liblinear\dscal.c">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="liblinear\linear.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -38,6 +26,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="FaceDetection.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\daxpy.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\ddot.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\dnrm2.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="liblinear\dscal.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -51,16 +51,16 @@
     <ClInclude Include="Randomforest.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="liblinear\blas.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="liblinear\blasp.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="liblinear\linear.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="liblinear\tron.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\blas.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="liblinear\blasp.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
