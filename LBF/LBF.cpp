@@ -32,8 +32,8 @@ int main(int argc, const char** argv)
 	else if (strcmp(argv[1], "TrainModel") == 0) // Êý¾Ý¼¯ÑµÁ·
 	{
 		vector<string> trainDataName;
-		//trainDataName.push_back("AFW");
-		//trainDataName.push_back("HELEN");
+		trainDataName.push_back("AFW");
+		trainDataName.push_back("HELEN");
 		trainDataName.push_back("LFPW");
 		TrainModel(trainDataName);
 	}

@@ -50,7 +50,6 @@ int FaceDetectionAndAlignment(const char* name)
 	cas_load.LoadCascadeRegressor(modelPath + "LBF.model");
 
 	string inputName;//ͼƬ
-	//CvCapture* capture = 0;
 	cv::VideoCapture capture = 0;
 	Mat frame, frameCopy, image;
 	if (name != NULL){
